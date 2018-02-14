@@ -69,26 +69,27 @@ class Config
 };
 typedef std::shared_ptr<Config> ConfigPtr; // config shared ptr
 
+/* ==================================================== */
+
 /**
  * @brief Processes arguments. Generates Config from them.
  */
 ConfigPtr ProcessArguments(int argc, char *argv[]);
 
-/* ==================================================== */
-
-
+/**
+ * @brief Main function.
+ */
 int main(int argc, char *argv[])
 {
+  // process arguments
   ConfigPtr conf;
   try {
-    conf = ProcessArguments(argc, argv);
+    conf = ProcessArguments(argc, argv); /* DELETE */conf->printConfig(); 
   }
   catch(std::exception& e) {
     std::cerr << "ERROR: " << e.what() << '\n';
     exit(1);
   }
-
-  conf->printConfig();
 
   // something to do.
 }

@@ -13,12 +13,13 @@ defines = -DDEBUG_MODE
 linkings = -lpthread -lm
 flags = $(defines) -std=c++11 -O0 -g -pedantic -Wall -Wextra
 
-all: ipk-client #ipk-server
+all: ipk-client ipk-server
 
 ipk-client: client.cpp
 	$(cc) $(flags) $< -o $@
 
-#ipk-server: server.cpp
+ipk-server: server.cpp
+	$(cc) $(flags) $< -o $@
 
 
 # clean
