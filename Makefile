@@ -26,4 +26,4 @@ ipk-server: server.cpp
 .PHONY: clean
 clean:
 	@echo "Cleaning generated files.";\
-	rm -rf *~ *.o *.gch *.dep ipk-client #ipk-server
+	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server

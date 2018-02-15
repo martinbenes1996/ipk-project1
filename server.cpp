@@ -7,50 +7,11 @@
 #include <string>
 #include <vector>
 
+#include "config.h"
+
 #ifdef DEBUG_MODE
   #define CONFIG_DEBUG
 #endif // DEBUG_MODE
-
-
-#define NO_MODE 0x00
-#define FULL_USER 0x01      // -n
-#define HOME_DIRECTORY 0x02 // -f
-#define USER_LIST 0x04      // -l
-
-/**
- * @brief Config class. Represents given arguments.
- */
-class Config
-{
-  public:
-    /** @brief Constructor. */
-    Config() {}
-
-    // Host setters
-    void setPort(const char * port) { mport = std::string(port); }
-
-    // debug
-    void printConfig()
-    {
-      #ifdef CONFIG_DEBUG
-        std::cout << "|port:\t" << mport << "\n";
-      #endif
-    }
-
-    void check()
-    {
-      if(mport == "") throw std::runtime_error("Argument -p not given.");
-    }
-
-  private:
-    /* ----------------- DATA ------------------- */
-    std::string mport = ""; /*< Host port. */
-    /* ------------------------------------------ */
-
-};
-typedef std::shared_ptr<Config> ConfigPtr; // config shared ptr
-
-/* ==================================================== */
 
 /**
  * @brief Processes arguments. Generates Config from them.
@@ -61,6 +22,8 @@ ConfigPtr ProcessArguments(int argc, char *argv[]);
  * @brief Reads /etc/passwd. Returns wanted strings (it can be printed).
  */
 std::vector<std::string> ReadPasswd(char mode, const char * login);
+
+
 
 /**
  * @brief Main function.
