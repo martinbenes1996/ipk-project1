@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 ConfigPtr ProcessArguments(int argc, char *argv[])
 {
   // bad arguments count
-  if(argc != 6 && argc != 7) throw std::runtime_error("Bad count of arguments.");
+  if(argc != 7) throw std::runtime_error("Bad count of arguments.");
   // create config
   ConfigPtr c = std::make_shared<Config>(); // shared ptr to config
 
@@ -50,35 +50,33 @@ ConfigPtr ProcessArguments(int argc, char *argv[])
     // bad arguments
     if(it == argc-1 && strcmp(argv[it], "-l") ) throw std::runtime_error("Invalid parameters.");
 
+    // -h
     if( !strcmp(argv[it], "-h") )
     {
       c->setIP(argv[it+1]);
     }
+    // -p
     else if( !strcmp(argv[it], "-p") )
     {
-      c->setPort(argv[it+1]);
+      c->setPort( argv[it+1] );
     }
-    else if( !strcmp(argv[it], "-n") )
+    // -r
+    else if( !strcmp(argv[it], "-r") )
     {
-      c->setFullUser(argv[it+1]);
+      c->setRead(argv[it+1]);
     }
-    else if( !strcmp(argv[it], "-l") )
+    // -w
+    else if( !strcmp(argv[it], "-w") )
     {
-      c->setUserList( (it != argc-1) ? argv[it+1] : "" );
-      if(it == argc-1) break;
-    }
-    else if( !strcmp(argv[it], "-f") )
-    {
-      c->setHomeDirectory(argv[it+1]);
+      c->setWrite( argv[it+1] );
     }
     else
     {
-      throw std::runtime_error("Unknown parameter.");
+      throw std::runtime_error(std::string("Unknown parameter '") + std::string(argv[it]) + "'.");
     }
     it += 2;
   }
 
+  c->check();
   return c;
-
-
 }
