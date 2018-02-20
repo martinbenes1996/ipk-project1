@@ -13,7 +13,7 @@ class Config
     Config() {}
 
     // Host setters
-    void setIP(const char * ip) { mip = std::string(ip); }
+    void setAddress(const char * addr) { maddr = std::string(addr); }
     void setPort(const char * port)
     {
       try{
@@ -26,27 +26,34 @@ class Config
     void setWrite(const char * file) { mread = false; mfile = std::string(file); }
     void setRead(const char * file) { mread = true; mfile = std::string(file); }
 
+    std::string getAddress() { return maddr; }
+    int getPort() { return mport; }
+    bool read() { return mread; }
+    bool write() { return !mread; }
+    std::string getFile() { return mfile; }
+
+    void check()
+    {
+      if(maddr == "") throw std::runtime_error("Argument -h not given.");
+      if(mport == -1) throw std::runtime_error("Argument -p not given.");
+      if(mfile == "") throw std::runtime_error("Any of arguments [-w|-r] not given.");
+    }
+
     // debug
     void printConfig()
     {
       #ifdef CONFIG_DEBUG
-        std::cout << "|IP:\t" << mip << "\n" <<
+        std::cout << "|address:\t" << maddr << "\n" <<
                      "|port:\t" << mport << "\n" <<
                      "|mode:\t" << mfile << (mread)?" R":" W" << "\n";
       #endif
     }
 
-    void check()
-    {
-      if(mip == "") throw std::runtime_error("Argument -h not given.");
-      if(mport == -1) throw std::runtime_error("Argument -p not given.");
-      if(mfile == "") throw std::runtime_error("Any of arguments [-w|-r] not given.");
-    }
-
   private:
+
     /* ----------------- DATA ------------------- */
     // host
-    std::string mip = "";   /*< Host IP. */
+    std::string maddr = "";   /*< Host address. */
     int mport = -1; /*< Host port. */
     // mode
     bool mread = true; /* Whether read (true), or write (false). */

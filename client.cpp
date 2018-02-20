@@ -1,11 +1,13 @@
 
 #include <cstring>
 #include <exception>
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <string>
 
 #include "config.h"
+#include "mysocket.h"
 
 #ifdef DEBUG_MODE
   #define CONFIG_DEBUG
@@ -16,23 +18,43 @@
  */
 ConfigPtr ProcessArguments(int argc, char *argv[]);
 
+std::string ReadFile(std::string name);
 
 /**
  * @brief Main function.
  */
 int main(int argc, char *argv[])
 {
-  // process arguments
-  ConfigPtr conf;
-  try {
-    conf = ProcessArguments(argc, argv); /* DELETE */conf->printConfig();
-  }
-  catch(std::exception& e) {
-    std::cerr << "ERROR: " << e.what() << '\n';
-    exit(1);
+  try
+  {
+    // process arguments
+    ConfigPtr conf;
+    conf = ProcessArguments(argc, argv);
+
+    // create socket
+    MySocket sckt( conf->getAddress(), conf->getPort() );
+
+    // read
+    if(conf->read())
+    {
+      // read file
+      std::string f = ReadFile( conf->getFile() );
+      // send
+      sckt.Send(f);
+    }
+    // write
+    else
+    {
+
+    }
+
+  } catch(std::exception& ex) {
+    std::cerr << "ERROR: " << ex.what() << "!\n";
+    exit(444);
   }
 
-  // something to do.
+
+
 }
 
 
@@ -53,7 +75,7 @@ ConfigPtr ProcessArguments(int argc, char *argv[])
     // -h
     if( !strcmp(argv[it], "-h") )
     {
-      c->setIP(argv[it+1]);
+      c->setAddress(argv[it+1]);
     }
     // -p
     else if( !strcmp(argv[it], "-p") )
@@ -79,4 +101,15 @@ ConfigPtr ProcessArguments(int argc, char *argv[])
 
   c->check();
   return c;
+}
+
+std::string ReadFile(std::string name)
+{
+  std::ifstream t(name);
+  t.seekg(0, std::ios::end);
+  size_t size = t.tellg();
+  std::string buffer(size, ' ');
+  t.seekg(0);
+  t.read(&buffer[0], size);
+  return buffer;
 }
