@@ -8,6 +8,8 @@
 #include <vector>
 
 #include "config.h"
+#include "defs.h"
+#include "mysocket.h"
 
 #ifdef DEBUG_MODE
   #define CONFIG_DEBUG
@@ -28,7 +30,37 @@ int main(int argc, char *argv[])
   // process arguments
   ConfigPtr conf;
   try {
-    conf = ProcessArguments(argc, argv); /* DELETE */conf->printConfig();
+    conf = ProcessArguments(argc, argv);
+
+    // create socket
+    ServerSocket sckt( conf->getPort() );
+
+    while( sckt.WaitForConnection() )
+    {
+
+      // read
+      if( sckt.ReceiveByte() == 0xFF )
+      {
+
+        /* --------------- SERVER READ PROTOCOL -------------------- */
+        std::string filename = sckt.ReceiveMessage(); // receive filename
+
+        sckt.SendMessage( ReadFile(filename) ); // send file
+        /* --------------------------------------------------------- */
+
+        std::cout << "Sent file: " << filename << "\n";
+
+
+      }
+      // write
+      else
+      {
+
+      }
+
+    }
+
+
   }
   catch(std::exception& e) {
     std::cerr << "ERROR: " << e.what() << '\n';
@@ -57,6 +89,6 @@ ConfigPtr ProcessArguments(int argc, char *argv[])
     throw std::runtime_error("Invalid parameters.");
   }
 
-  c->check();
+  c->checkServer();
   return c;
 }

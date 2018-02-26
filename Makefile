@@ -11,14 +11,16 @@
 cc = g++
 defines = -DDEBUG_MODE
 linkings = -lpthread -lm
-flags = $(defines) -std=c++11 -O0 -g -pedantic -Wall -Wextra
+flags = $(defines) -std=c++17 -O2 -g -pedantic -Wall -Wextra
 
 all: ipk-client ipk-server
 
 ipk-client: client.cpp
+	@echo "Building ipk-client.";\
 	$(cc) $(flags) $< -o $@
 
 ipk-server: server.cpp
+	@echo "Building ipk-server.";\
 	$(cc) $(flags) $< -o $@
 
 

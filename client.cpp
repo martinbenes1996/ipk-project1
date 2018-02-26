@@ -1,12 +1,13 @@
 
 #include <cstring>
 #include <exception>
-#include <fstream>
 #include <iostream>
 #include <memory>
+
 #include <string>
 
 #include "config.h"
+#include "defs.h"
 #include "mysocket.h"
 
 #ifdef DEBUG_MODE
@@ -25,33 +26,50 @@ std::string ReadFile(std::string name);
  */
 int main(int argc, char *argv[])
 {
-  try
-  {
+  /*try
+  {*/
     // process arguments
     ConfigPtr conf;
     conf = ProcessArguments(argc, argv);
 
     // create socket
-    MySocket sckt( conf->getAddress(), conf->getPort() );
+    ClientSocket sckt( conf->getAddress(), conf->getPort() );
 
     // read
     if(conf->read())
     {
-      // read file
-      std::string f = ReadFile( conf->getFile() );
-      // send
-      sckt.Send(f);
+      /* --------------- CLIENT READ PROTOCOL -------------------- */
+      sckt.SendByte(0xFF); // send -r
+
+      sckt.SendMessage(conf->getFile()); // send filename
+
+      std::string file = sckt.ReceiveMessage(); // receive file
+      /* --------------------------------------------------------- */
+
+      // write the file
+      std::ofstream o(conf->getFile());
+      o << file;
+      o.close();
+
     }
     // write
     else
     {
 
+      /* -------------- CLIENT WRITE PROTOCOL -------------------- */
+      sckt.SendByte(0x00); // send -w
+
+      sckt.SendMessage(conf->getFile()); // send filename
+
+      sckt.SendMessage( ReadFile(conf->getFile()) ); // send file
+      /* --------------------------------------------------------- */
+
     }
 
-  } catch(std::exception& ex) {
+  /*} catch(std::exception& ex) {
     std::cerr << "ERROR: " << ex.what() << "!\n";
     exit(444);
-  }
+  }*/
 
 
 
@@ -99,17 +117,6 @@ ConfigPtr ProcessArguments(int argc, char *argv[])
     it += 2;
   }
 
-  c->check();
+  c->checkClient();
   return c;
-}
-
-std::string ReadFile(std::string name)
-{
-  std::ifstream t(name);
-  t.seekg(0, std::ios::end);
-  size_t size = t.tellg();
-  std::string buffer(size, ' ');
-  t.seekg(0);
-  t.read(&buffer[0], size);
-  return buffer;
 }

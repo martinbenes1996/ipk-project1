@@ -32,11 +32,16 @@ class Config
     bool write() { return !mread; }
     std::string getFile() { return mfile; }
 
-    void check()
+    void checkClient()
     {
       if(maddr == "") throw std::runtime_error("Argument -h not given.");
       if(mport == -1) throw std::runtime_error("Argument -p not given.");
       if(mfile == "") throw std::runtime_error("Any of arguments [-w|-r] not given.");
+    }
+
+    void checkServer()
+    {
+      if(mport == -1) throw std::runtime_error("Argument -p not given.");
     }
 
     // debug
