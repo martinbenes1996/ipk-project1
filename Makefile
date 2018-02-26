@@ -29,3 +29,9 @@ ipk-server: server.cpp
 clean:
 	@echo "Cleaning generated files.";\
 	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server
+
+# zip
+.PHONY: zip
+zip:
+	@echo "Zipping files.";\
+	tar -zcvf ipk.tar.gz *.cpp *.h Makefile > /dev/null 2> /dev/null

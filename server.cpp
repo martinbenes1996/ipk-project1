@@ -45,7 +45,14 @@ int main(int argc, char *argv[])
         /* --------------- SERVER READ PROTOCOL -------------------- */
         std::string filename = sckt.ReceiveMessage(); // receive filename
 
-        sckt.SendMessage( ReadFile(filename) ); // send file
+        // read file
+        std::string file;
+        bool fail = false;
+        try { file = ReadFile(filename); }
+        catch(std::exception& ex) { fail = true; }
+        sckt.SendByte( ((fail) ? 0x00 : 0xFF) );
+
+        sckt.SendMessage( file ); // send file
         /* --------------------------------------------------------- */
 
         std::cout << "Sent file: " << filename << "\n";
@@ -55,8 +62,17 @@ int main(int argc, char *argv[])
       // write
       else
       {
+        /* ----------------- SERVER WRITE PROTOCOL ------------------- */
+        std::string filename = sckt.ReceiveMessage(); // receive filename
 
+        std::string file = sckt.ReceiveMessage(); // receive file
+        /* ----------------------------------------------------------- */
+
+        // write the file
+        WriteToFile(filename, file);
       }
+
+
 
     }
 

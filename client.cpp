@@ -43,13 +43,13 @@ int main(int argc, char *argv[])
 
       sckt.SendMessage(conf->getFile()); // send filename
 
+      if(sckt.ReceiveByte() == 0x00) throw std::runtime_error("File does not exist");
+
       std::string file = sckt.ReceiveMessage(); // receive file
       /* --------------------------------------------------------- */
 
       // write the file
-      std::ofstream o(conf->getFile());
-      o << file;
-      o.close();
+      WriteToFile(conf->getFile(), file);
 
     }
     // write

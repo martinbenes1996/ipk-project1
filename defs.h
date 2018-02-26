@@ -22,4 +22,11 @@ std::string ReadFile(std::string name)
   return str;
 }
 
+void WriteToFile(std::string filename, std::string file)
+{
+  std::ofstream o(filename);
+  o << file;
+  o.close();
+}
+
 #endif // DEFS_H
