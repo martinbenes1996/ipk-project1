@@ -55,8 +55,7 @@ int main(int argc, char *argv[])
         sckt.SendMessage( file ); // send file
         /* --------------------------------------------------------- */
 
-        std::cout << "Sent file: " << filename << "\n";
-
+        std::cout << "Sent file " << filename << ".\n";
 
       }
       // write
@@ -70,6 +69,8 @@ int main(int argc, char *argv[])
 
         // write the file
         WriteToFile(filename, file);
+
+        std::cout << "Received file " << filename << ".\n";
       }
 
 

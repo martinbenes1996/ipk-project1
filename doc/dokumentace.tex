@@ -1,0 +1,80 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                         %
+%       This is documentation for the IPK project.        %
+%                                                         %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+%------------------------------------------------%
+%	    CONFIGURATION + IMPORTED PACKAGES        %
+%------------------------------------------------%
+\documentclass[10pt,a4paper,titlepage]{article}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=100pt]{geometry}
+
+
+\usepackage{graphicx}   % Import pictures
+\usepackage{ragged2e}   % fullfill paragraphs
+\usepackage{multicol}
+\usepackage{lscape}
+
+\newenvironment{changemargin}[2]{%
+\begin{list}{}{%
+\setlength{\topsep}{0pt}%
+\setlength{\leftmargin}{#1}%
+\setlength{\rightmargin}{#2}%
+\setlength{\listparindent}{\parindent}%
+\setlength{\itemindent}{\parindent}%
+\setlength{\parsep}{\parskip}%
+}%
+\item[]}{\end{list}}
+
+\begin{document}
+%-----------------------------------------%
+%	            TITLE PAGE                %
+%-----------------------------------------%
+\begin{titlepage}
+
+\begin{center}
+% Headings
+\textsc{\LARGE Brno University of technology}\\[0.5cm]
+\textsc{\large Faculty of Information Technology}\\[8cm]
+
+% Title - lines
+{ \huge \bfseries IPK project 1}\\[0.3cm]
+{ \Large \bfseries documentation}\\[0.5cm]
+{ \bfseries Martin Benes}\\
+
+\end{center}
+
+\end{titlepage}
+\newpage
+
+%-----------------------------------------%
+%	              DOCUMENT                  %
+%-----------------------------------------%
+
+\setcounter{page}{1}
+\pagenumbering{arabic}
+
+\section{IPK project documentation}
+
+\begin{multicols}{2}
+\includegraphics[width=0.45\textwidth]{read.png}
+\includegraphics[width=0.45\textwidth]{write.png}
+\includegraphics[width=0.45\textwidth]{send_byte.png}
+\includegraphics[width=0.45\textwidth]{send_data.png}
+
+\begin{justify}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus posuere venenatis quam,
+at dignissim velit cursus ac. Ut et quam in enim interdum imperdiet. Integer nec nibh lobortis,
+tempor est id, rhoncus libero. Ut egestas consectetur felis eu tincidunt. Fusce consequat massa
+hendrerit ultricies faucibus. Phasellus blandit dui nec orci aliquet egestas. Vestibulum hendrerit
+nibh eget tortor pharetra egestas. Donec gravida suscipit orci, non lobortis est eleifend sit amet.
+Donec varius urna ut libero ultricies, nec consectetur leo finibus.
+\end{justify}
+
+\end{multicols}
+
+\end{document}

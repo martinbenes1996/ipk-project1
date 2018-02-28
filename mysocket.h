@@ -135,7 +135,7 @@ class ServerSocket: public Socket
 
     std::string ReceiveMessage()
     {
-      if(mcomm_socket == -1) throw std::runtime_error("Connection not established");
+      if( !Connected() ) throw std::runtime_error("Connection not established");
 
       int tmp = msocket;
       msocket = mcomm_socket;
@@ -148,7 +148,7 @@ class ServerSocket: public Socket
 
     void SendMessage(std::string msg)
     {
-      if(mcomm_socket == -1) throw std::runtime_error("Connection not established");
+      if( !Connected() ) throw std::runtime_error("Connection not established");
 
       int tmp = msocket;
       msocket = mcomm_socket;
@@ -160,7 +160,7 @@ class ServerSocket: public Socket
 
     void SendByte(unsigned char byte)
     {
-      if(mcomm_socket == -1) throw std::runtime_error("Connection not established");
+      if( !Connected() ) throw std::runtime_error("Connection not established");
 
       int tmp = msocket;
       msocket = mcomm_socket;
@@ -172,7 +172,7 @@ class ServerSocket: public Socket
 
     unsigned char ReceiveByte()
     {
-      if(mcomm_socket == -1) throw std::runtime_error("Connection not established");
+      if( !Connected() ) throw std::runtime_error("Connection not established");
 
       int tmp = msocket;
       msocket = mcomm_socket;
@@ -186,11 +186,7 @@ class ServerSocket: public Socket
     bool WaitForConnection()
     {
       // close previous connection
-      if(mcomm_socket != -1)
-      {
-        close(mcomm_socket);
-        mcomm_socket = -1;
-      }
+      CloseConnection();
 
       // create communication socket
       struct sockaddr_in6 client_addr;
@@ -201,10 +197,24 @@ class ServerSocket: public Socket
       // connect to the client
       char str[INET6_ADDRSTRLEN];
       if(inet_ntop(AF_INET6, &client_addr.sin6_addr, str, sizeof(str)))
+      {
         std::cout << "Connected: " << str << ":" << ntohs(client_addr.sin6_port) << "\n";
+      }
 
       return true;
     }
+
+    void CloseConnection()
+    {
+      if(mcomm_socket != -1)
+      {
+        close(mcomm_socket);
+        mcomm_socket = -1;
+        std::cout << "\n";
+      }
+    }
+
+    bool Connected() { return mcomm_socket != -1; }
 
     ~ServerSocket() { if(mcomm_socket != -1) close(mcomm_socket); }
 

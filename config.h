@@ -31,6 +31,7 @@ class Config
     bool read() { return mread; }
     bool write() { return !mread; }
     std::string getFile() { return mfile; }
+    std::string getFilename() { return mfile.substr(mfile.find_last_of("/\\") + 1); }
 
     void checkClient()
     {

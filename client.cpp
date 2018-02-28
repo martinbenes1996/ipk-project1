@@ -26,8 +26,8 @@ std::string ReadFile(std::string name);
  */
 int main(int argc, char *argv[])
 {
-  /*try
-  {*/
+  try
+  {
     // process arguments
     ConfigPtr conf;
     conf = ProcessArguments(argc, argv);
@@ -43,13 +43,15 @@ int main(int argc, char *argv[])
 
       sckt.SendMessage(conf->getFile()); // send filename
 
-      if(sckt.ReceiveByte() == 0x00) throw std::runtime_error("File does not exist");
+      if(sckt.ReceiveByte() == 0x00) throw std::runtime_error("Receiving a file failed.");
 
       std::string file = sckt.ReceiveMessage(); // receive file
       /* --------------------------------------------------------- */
 
       // write the file
-      WriteToFile(conf->getFile(), file);
+      WriteToFile(conf->getFilename(), file);
+
+      std::cout << "File " << conf->getFile() << " successfully received.\n";
 
     }
     // write
@@ -59,17 +61,21 @@ int main(int argc, char *argv[])
       /* -------------- CLIENT WRITE PROTOCOL -------------------- */
       sckt.SendByte(0x00); // send -w
 
-      sckt.SendMessage(conf->getFile()); // send filename
+      sckt.SendMessage(conf->getFilename()); // send filename
 
       sckt.SendMessage( ReadFile(conf->getFile()) ); // send file
       /* --------------------------------------------------------- */
 
+      std::cout << "File " << conf->getFile() << " successfully sent.\n";
+
     }
 
-  /*} catch(std::exception& ex) {
+
+
+  } catch(std::exception& ex) {
     std::cerr << "ERROR: " << ex.what() << "!\n";
     exit(444);
-  }*/
+  }
 
 
 
