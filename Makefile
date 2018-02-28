@@ -24,14 +24,20 @@ ipk-server: server.cpp
 	$(cc) $(flags) $< -o $@
 
 
+# doc
+.PHONY: doc
+doc:
+	@echo "Create documentation.";\
+	cd doc && pdflatex dokumentace.tex && cd ..
+
 # clean
 .PHONY: clean
 clean:
 	@echo "Cleaning generated files.";\
-	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server
+	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server doc/dokumentace.aux doc/dokumentace.log doc/dokumentace.pdf ipk.tar.gz
 
 # zip
 .PHONY: zip
 zip:
 	@echo "Zipping files.";\
-	tar -zcvf ipk.tar.gz *.cpp *.h Makefile > /dev/null 2> /dev/null
+	tar -zcvf ipk.tar.gz *.cpp *.h Makefile doc/dokumentace.tex doc/*.png> /dev/null 2> /dev/null
