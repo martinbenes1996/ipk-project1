@@ -20,48 +20,69 @@ class Socket
     {
       msocket = socket(domain, SOCK_STREAM, 0);
       #ifdef SOCKET_DEBUG
-        std::cerr << "Socket call: " << msocket;
+        std::cerr << "Create socket " << msocket << ".\n";
       #endif
       if(msocket <= 0)
         throw std::runtime_error("Opening a socket failed");
     }
 
-    void SendMessage(std::string msg)
+    void SendMessage(NetString msg)
     {
-      #ifdef SOCKET_DEBUG
-        std::cerr << "Send message: " << msg;
-      #endif
-      if(msg.size() >= SIZE_MAX)
+      if(msg.getSize() >= SIZE_MAX)
         throw std::runtime_error("Message too big");
 
-      size_t size = msg.size() + 1;
+      size_t size = msg.getSize();
 
       // send
       if( send(msocket, (const char *)&size, sizeof(size_t), 0) < 0 ) // send a size of a message
         throw std::runtime_error("Sending a size of a message failed");
-      if( send(msocket, msg.c_str(), size, 0) < 0 ) // send a message
-        throw std::runtime_error("Sending a message failed");
+
+      size_t total = 0;
+      while ( total != size ) {
+        #ifdef SOCKET_DEBUG
+          std::cerr << "received " << total << "/" << size << "\n";
+        #endif
+        ssize_t d = send(msocket, (void *)&msg.getData()[total], size - total, 0);
+        if( d < 0 )
+          throw std::runtime_error("Sending a message failed");
+        total += d;
+      }
+
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Done:" << total << "/" << size << "\n";
+      #endif
+
     }
 
-    std::string ReceiveMessage()
+    NetString ReceiveMessage()
     {
       #ifdef SOCKET_DEBUG
-        std::cerr << "Receiving message";
+        std::cerr << "Receiving message.\n";
       #endif
       size_t size;
 
       // receive
       if( recv(msocket, &size, sizeof(size_t), 0) < 0 ) // receive a size of a message
         throw std::runtime_error("Receiving a size of a message failed");
-      char *buff = new char[size + 1];
-      if( recv(msocket, buff, size + 1, 0) < 0)
-        throw std::runtime_error("Receiving a message failed");
+      char *buff = new char[size];
 
-      std::string msg(buff);
-      delete [] buff;
+      size_t total = 0;
+      while ( total != size ) {
+        #ifdef SOCKET_DEBUG
+          std::cerr << "received " << total << "/" << size << "\n";
+        #endif
+        ssize_t d = recv(msocket, &buff[total], size - total, 0);
+        if( d < 0 )
+          throw std::runtime_error("Sending a message failed");
+        total += d;
+      }
+
       #ifdef SOCKET_DEBUG
-        std::cerr << "Received message: " << msg << "\n";
+        std::cerr << "Done:" << total << "/" << size << "\n";
       #endif
+
+      NetString msg(buff, size);
+      delete [] buff;
       return msg;
     }
 
@@ -78,7 +99,7 @@ class Socket
     unsigned char ReceiveByte()
     {
       #ifdef SOCKET_DEBUG
-        std::cerr << "Receiving byte to " << msocket << ".\n";
+        std::cerr << "Receiving byte from " << msocket << ".\n";
       #endif
       unsigned char byte;
 
@@ -169,7 +190,9 @@ class ServerSocket: public Socket
         std::cerr << "Binding.\n";
       #endif
       if( bind( msocket, (const struct sockaddr*)&addr, sizeof(addr) ) < 0 )
+      {
         throw std::runtime_error("Binding failed");
+      }
 
       #ifdef SOCKET_DEBUG
         std::cerr << "Listening.\n";
@@ -178,20 +201,20 @@ class ServerSocket: public Socket
         throw std::runtime_error("Listening failed");
     }
 
-    std::string ReceiveMessage()
+    NetString ReceiveMessage()
     {
       if( !Connected() ) throw std::runtime_error("Connection not established");
 
       int tmp = msocket;
       msocket = mcomm_socket;
 
-      std::string result = Socket::ReceiveMessage();
+      NetString result = Socket::ReceiveMessage();
 
       msocket = tmp;
       return result;
     }
 
-    void SendMessage(std::string msg)
+    void SendMessage(NetString msg)
     {
       if( !Connected() ) throw std::runtime_error("Connection not established");
 

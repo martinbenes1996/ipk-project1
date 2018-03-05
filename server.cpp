@@ -22,6 +22,7 @@ void sigChildEnded(int)
   #ifdef CONCURRENT_DEBUG
     std::cerr << "Subprocess " << pid << " caught.\n";
   #endif
+  (void)pid; // without CONCURRENT_DEBUG it causes warning (not used).
 }
 
 void sigInt(int)
@@ -126,29 +127,31 @@ void PerformWrite(std::unique_ptr<ServerSocket>& sckt)
 
   try {
     /* ----------------- SERVER WRITE PROTOCOL ------------------- */
-    std::string filename = sckt->ReceiveMessage(); // receive filename
+    NetString filename = sckt->ReceiveMessage(); // receive filename
 
-    std::string file = sckt->ReceiveMessage(); // receive file
+    NetString file = sckt->ReceiveMessage(); // receive file
     /* ----------------------------------------------------------- */
 
     // write the file
-    WriteToFile(filename, file);
+    file.Write2File(filename);
 
     #ifdef CONCURRENT_DEBUG
       std::cerr << "- Write success.\n";
     #endif
     #ifdef DEBUG_MODE
-    std::cerr << "- Received file " << filename << ".\n";
+    	std::cerr << "Received file " << filename.getString() << ".\n";
     #endif
     sckt.reset(nullptr);
+		getchar();
     exit(0);
 
   } catch(std::exception& e) {
     #ifdef CONCURRENT_DEBUG
       std::cerr << "- Write fail.\n";
     #endif
-
-    std::cerr << e.what() << "\n";
+    #ifdef DEBUG_MODE
+      std::cerr << e.what() << "\n";
+    #endif
     sckt.reset(nullptr);
     exit(1);
   }
@@ -162,23 +165,31 @@ void PerformRead(std::unique_ptr<ServerSocket>& sckt)
 
   try {
     /* --------------- SERVER READ PROTOCOL -------------------- */
-    std::string filename = sckt->ReceiveMessage(); // receive filename
+    std::string filename = sckt->ReceiveMessage().getString(); // receive filename
+		#ifdef DEBUG_MODE
+			std::cerr << "Sending file " << filename << "\n";
+		#endif
 
     // read file
-    std::string file;
-    bool fail = false;
-    try { file = ReadFile(filename); }
-    catch(std::exception& ex) { fail = true; }
-    sckt->SendByte( ((fail) ? 0x00 : 0xFF) );
+    NetString file;
+    try
+    {
+      file.ReadFile(filename);
+      sckt->SendByte( 0xFF );
+    }
+    // error
+    catch(std::exception& ex)
+    {
+      sckt->SendByte( 0x00 );
+      throw std::runtime_error("File does not exist.");
+    }
+
 
     sckt->SendMessage( file ); // send file
     /* --------------------------------------------------------- */
 
     #ifdef CONCURRENT_DEBUG
       std::cerr << "- Read success.\n";
-    #endif
-    #ifdef DEBUG_MODE
-    std::cerr << "- Sent file " << filename << ".\n";
     #endif
     sckt.reset(nullptr);
     exit(0);
@@ -187,8 +198,8 @@ void PerformRead(std::unique_ptr<ServerSocket>& sckt)
     #ifdef CONCURRENT_DEBUG
       std::cerr << "- Read fail.\n";
     #endif
+    std::cerr << e.what() << "\n";
 
-    std::cerr << "- " << e.what() << "\n";
     sckt.reset(nullptr);
     exit(1);
   }

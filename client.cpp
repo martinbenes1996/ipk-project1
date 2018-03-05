@@ -5,6 +5,7 @@
 #include <memory>
 
 #include <string>
+#include <typeinfo>
 
 #include "config.h"
 #include "defs.h"
@@ -22,8 +23,8 @@ std::string ReadFile(std::string name);
  */
 int main(int argc, char *argv[])
 {
-  try
-  {
+  //try
+  //{
     // process arguments
     std::unique_ptr<Config> conf;
     conf.reset( ProcessArguments(argc, argv) );
@@ -39,15 +40,18 @@ int main(int argc, char *argv[])
 
       sckt.SendMessage(conf->getFile()); // send filename
 
-      if(sckt.ReceiveByte() == 0x00) throw std::runtime_error("Receiving a file failed.");
+      if(sckt.ReceiveByte() == 0x00)
+        throw std::runtime_error("Opening a remote file failed.");
 
-      std::string file = sckt.ReceiveMessage(); // receive file
+      NetString file = sckt.ReceiveMessage(); // receive file
       /* --------------------------------------------------------- */
 
       // write the file
-      WriteToFile(conf->getFilename(), file);
+      file.Write2File(conf->getFilename());
 
-      std::cout << "File " << conf->getFile() << " successfully received.\n";
+      #ifdef DEBUG_MODE
+        std::cout << "File " << conf->getFilename().getString() << " successfully received.\n";
+      #endif
 
     }
     // write
@@ -57,21 +61,23 @@ int main(int argc, char *argv[])
       /* -------------- CLIENT WRITE PROTOCOL -------------------- */
       sckt.SendByte(0x00); // send -w
 
-      sckt.SendMessage(conf->getFilename()); // send filename
+      sckt.SendMessage( conf->getFilename() ); // send filename
 
-      sckt.SendMessage( ReadFile(conf->getFile()) ); // send file
+      sckt.SendMessage( conf->ReadFile() ); // send file
       /* --------------------------------------------------------- */
 
-      std::cout << "File " << conf->getFile() << " successfully sent.\n";
+      #ifdef DEBUG_MODE
+        std::cout << "File " << conf->getFilename().getString() << " successfully sent.\n";
+      #endif
 
     }
 
 
 
-  } catch(std::exception& ex) {
-    std::cerr << "ERROR: " << ex.what() << "!\n";
-    exit(444);
-  }
+  //} catch(std::exception& ex) {
+  //  std::cerr << "ERROR: " << ex.what() << "!\n";
+  //  exit(444);
+  //}
 
   return 0;
 }
