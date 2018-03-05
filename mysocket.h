@@ -11,18 +11,26 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#include "defs.h"
+
 class Socket
 {
   public:
     Socket(int domain)
     {
       msocket = socket(domain, SOCK_STREAM, 0);
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Socket call: " << msocket;
+      #endif
       if(msocket <= 0)
         throw std::runtime_error("Opening a socket failed");
     }
 
     void SendMessage(std::string msg)
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Send message: " << msg;
+      #endif
       if(msg.size() >= SIZE_MAX)
         throw std::runtime_error("Message too big");
 
@@ -37,6 +45,9 @@ class Socket
 
     std::string ReceiveMessage()
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Receiving message";
+      #endif
       size_t size;
 
       // receive
@@ -48,26 +59,46 @@ class Socket
 
       std::string msg(buff);
       delete [] buff;
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Received message: " << msg << "\n";
+      #endif
       return msg;
     }
 
     void SendByte(unsigned char byte)
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Send byte " << (int)byte << " to " << msocket << "!\n";
+      #endif
+
       if( send(msocket, (const char*)&byte, sizeof(unsigned char), 0) < 0 )
         throw std::runtime_error("Sending a metainfo failed");
     }
 
     unsigned char ReceiveByte()
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Receiving byte to " << msocket << ".\n";
+      #endif
       unsigned char byte;
 
       // receive
       if( recv(msocket, &byte, sizeof(unsigned char), 0) < 0 )
         throw std::runtime_error("Receiving a metainfo failed");
+
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Received byte " << (int)byte << "!\n";
+      #endif
       return byte;
     }
 
-    ~Socket() { close(msocket); }
+    ~Socket()
+    {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Close socket: " << msocket << "\n";
+      #endif
+      close(msocket);
+    }
 
   protected:
     int msocket = -1;
@@ -81,9 +112,14 @@ class ClientSocket: public Socket
   public:
     ClientSocket(std::string address, int port): Socket(AF_INET)
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Create client socket.\n";
+      #endif
       addr = getAddr(address, port);
 
-      std::cout << "Server " << inet_ntoa(addr.sin_addr) << " : " << ntohs(addr.sin_port) << "\n";
+      #ifdef SOCKET_DEBUG
+        std::cout << "Server " << inet_ntoa(addr.sin_addr) << " : " << ntohs(addr.sin_port) << "\n";
+      #endif
 
       if( connect( msocket, (const struct sockaddr*)&addr, sizeof(addr) ) != 0 )
         throw std::runtime_error("Connecting failed");
@@ -124,11 +160,20 @@ class ServerSocket: public Socket
   public:
     ServerSocket(int port): Socket(PF_INET6)
     {
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Create server socket.\n";
+      #endif
       addr = getAddr(port);
 
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Binding.\n";
+      #endif
       if( bind( msocket, (const struct sockaddr*)&addr, sizeof(addr) ) < 0 )
         throw std::runtime_error("Binding failed");
 
+      #ifdef SOCKET_DEBUG
+        std::cerr << "Listening.\n";
+      #endif
       if( listen( msocket, 1) < 0 )
         throw std::runtime_error("Listening failed");
     }
@@ -183,7 +228,7 @@ class ServerSocket: public Socket
       return result;
     }
 
-    bool WaitForConnection()
+    int WaitForConnection()
     {
       // close previous connection
       CloseConnection();
@@ -194,29 +239,42 @@ class ServerSocket: public Socket
       mcomm_socket = accept(msocket, (struct sockaddr*)&client_addr, &caddr_len);
       if(mcomm_socket <= 0) return false;
 
-      // connect to the client
-      char str[INET6_ADDRSTRLEN];
-      if(inet_ntop(AF_INET6, &client_addr.sin6_addr, str, sizeof(str)))
-      {
-        std::cout << "Connected: " << str << ":" << ntohs(client_addr.sin6_port) << "\n";
-      }
+      int pid = fork();
+      if(pid < 0) throw std::runtime_error("fork() call failed!");
 
-      return true;
+      if(pid == 0)
+      {
+        close(msocket);
+
+        // connect to the client
+        char str[INET6_ADDRSTRLEN];
+        if(inet_ntop(AF_INET6, &client_addr.sin6_addr, str, sizeof(str)))
+        {
+          #ifdef DEBUG_MODE
+            std::cerr << "- Connected: " << str << ":" << ntohs(client_addr.sin6_port) << "\n";
+          #endif
+        }
+      }
+      return pid;
     }
 
     void CloseConnection()
     {
       if(mcomm_socket != -1)
       {
+        #ifdef SOCKET_DEBUG
+          std::cerr << "Close comm socket: " << mcomm_socket << ".\n";
+        #endif
         close(mcomm_socket);
         mcomm_socket = -1;
-        std::cout << "\n";
       }
     }
 
     bool Connected() { return mcomm_socket != -1; }
 
-    ~ServerSocket() { if(mcomm_socket != -1) close(mcomm_socket); }
+    ~ServerSocket() {
+      CloseConnection();
+    }
 
 
 

@@ -10,14 +10,10 @@
 #include "defs.h"
 #include "mysocket.h"
 
-#ifdef DEBUG_MODE
-  #define CONFIG_DEBUG
-#endif // DEBUG_MODE
-
 /**
  * @brief Processes arguments. Generates Config from them.
  */
-ConfigPtr ProcessArguments(int argc, char *argv[]);
+Config * ProcessArguments(int argc, char *argv[]);
 
 std::string ReadFile(std::string name);
 
@@ -29,8 +25,8 @@ int main(int argc, char *argv[])
   try
   {
     // process arguments
-    ConfigPtr conf;
-    conf = ProcessArguments(argc, argv);
+    std::unique_ptr<Config> conf;
+    conf.reset( ProcessArguments(argc, argv) );
 
     // create socket
     ClientSocket sckt( conf->getAddress(), conf->getPort() );
@@ -77,18 +73,17 @@ int main(int argc, char *argv[])
     exit(444);
   }
 
-
-
+  return 0;
 }
 
 
 
-ConfigPtr ProcessArguments(int argc, char *argv[])
+Config * ProcessArguments(int argc, char *argv[])
 {
   // bad arguments count
   if(argc != 7) throw std::runtime_error("Bad count of arguments.");
   // create config
-  ConfigPtr c = std::make_shared<Config>(); // shared ptr to config
+  Config* c = new Config; // shared ptr to config
 
   int it = 1;
   while(it < argc)

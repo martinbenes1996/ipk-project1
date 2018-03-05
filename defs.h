@@ -6,6 +6,13 @@
 #include <string>
 #include <sstream>
 
+#ifdef DEBUG_MODE
+  //#define CONFIG_DEBUG
+  //#define COMM_DEBUG
+  //#define SOCKET_DEBUG
+  #define CONCURRENT_DEBUG
+#endif // DEBUG_MODE
+
 std::string ReadFile(std::string name)
 {
   // open file

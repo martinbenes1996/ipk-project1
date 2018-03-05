@@ -69,7 +69,5 @@ class Config
 };
 
 
-typedef std::shared_ptr<Config> ConfigPtr; // config shared ptr
-
 
 #endif // CONFIG_H
