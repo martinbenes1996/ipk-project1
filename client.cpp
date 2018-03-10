@@ -92,7 +92,7 @@ void PerformRead(int sckt)
     Debug_Comm("file found");
 
     // open the file
-    f = fopen(conf.getFilename().c_str(), "wb");
+    f = fopen(conf.getFile().c_str(), "wb");
     if(f == NULL) throw std::runtime_error("file could not be opened");
 
     // size of message
@@ -149,9 +149,9 @@ void PerformWrite(int sckt)
   try {
     /* ----------------- CLIENT WRITE PROTOCOL ------------------- */
     // filename
-    size_t size = conf.getFile().size() + 1;
+    size_t size = conf.getFilename().size() + 1;
     if(send(sckt, &size, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
-    if(send(sckt, conf.getFile().c_str(), conf.getFile().size() + 1, 0) < 0) throw std::runtime_error("connection failed");
+    if(send(sckt, conf.getFilename().c_str(), conf.getFile().size() + 1, 0) < 0) throw std::runtime_error("connection failed");
 
     // open the file
     f = fopen(conf.getFile().c_str(), "rb");
