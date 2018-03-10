@@ -13,9 +13,9 @@
 
 #ifdef DEBUG_MODE
   //#define CONFIG_DEBUG
-  #define COMM_DEBUG
+  //#define COMM_DEBUG
   //#define SOCKET_DEBUG
-  #define CONCURRENT_DEBUG
+  //#define CONCURRENT_DEBUG
 #endif // DEBUG_MODE
 
 #define BUFFER_SIZE 1024
@@ -23,6 +23,7 @@
 
 void Debug_Comm(std::string str)
 {
+  (void)str;
   #ifdef COMM_DEBUG
     std::cerr << str << "\n";
   #endif
@@ -30,6 +31,7 @@ void Debug_Comm(std::string str)
 
 void Debug_Concurr(std::string str)
 {
+  (void)str;
   #ifdef CONCURRENT_DEBUG
     std::cerr << str << "\n";
   #endif

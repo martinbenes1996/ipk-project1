@@ -4,6 +4,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -62,7 +63,7 @@ int main(int argc, char *argv[])
     else PerformWrite(sckt);           // write
 
   } catch(std::exception& ex) {
-    std::cerr << ex.what() << "!\n";
+    std::cerr << "Client: main(): " << ex.what() << "!\n";
     exit(444);
   }
 
@@ -72,87 +73,135 @@ int main(int argc, char *argv[])
 
 void PerformRead(int sckt)
 {
-  /* ----------------- CLIENT READ PROTOCOL ------------------- */
+  FILE * f = NULL;
 
-  // filename
-  size_t size = conf.getFile().size() + 1;
-  send(sckt, &size, sizeof(size_t), 0);
-  send(sckt, conf.getFile().c_str(), conf.getFile().size() + 1, 0);
+  try {
+    /* ----------------- CLIENT READ PROTOCOL ------------------- */
 
-  Debug_Comm("send filename");
+    // filename
+    size_t size = conf.getFile().size() + 1;
+    if(send(sckt, &size, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
+    if(send(sckt, conf.getFile().c_str(), conf.getFile().size() + 1, 0) < 0) throw std::runtime_error("connection failed");
 
-  unsigned char stat;
-  recv(sckt, &stat, sizeof(char), 0);
-  if(stat == 0x00) throw std::runtime_error("file could not be read");
+    Debug_Comm("send filename");
 
-  Debug_Comm("file found");
+    unsigned char stat;
+    if(recv(sckt, &stat, sizeof(char), 0) < 0) throw std::runtime_error("connection failed");
+    if(stat == 0x00) throw std::runtime_error("file could not be read");
 
-  // open the file
-  FILE * f = fopen(conf.getFilename().c_str(), "wb");
-  if(f == NULL) throw std::runtime_error("file could not be opened");
+    Debug_Comm("file found");
 
-  // size of message
-  size_t msgsize;
-  recv(sckt, &msgsize, sizeof(size_t), 0);
+    // open the file
+    f = fopen(conf.getFilename().c_str(), "wb");
+    if(f == NULL) throw std::runtime_error("file could not be opened");
 
-  Debug_Comm(std::string("file size ") + std::to_string(msgsize));
+    // size of message
+    size_t msgsize;
+    if(recv(sckt, &msgsize, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
 
-  // receive file
-  char pckt[BUFFER_SIZE];
-  size_t rest = msgsize;
-  do {
-    size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
-    recv(sckt, pckt, blksize, 0);
-    fwrite(pckt, sizeof(char), blksize, f);
+    Debug_Comm(std::string("file size ") + std::to_string(msgsize));
 
-    unsigned char ack = 0xFF;
-    send(sckt, &ack, sizeof(char), 0);
-    rest -= blksize;
-    Debug_Comm(std::to_string(msgsize - rest) + "/" + std::to_string(msgsize));
+    // receive file
+    char pckt[BUFFER_SIZE];
+    size_t rest = msgsize;
+    int cnt = 0;
+    do {
+      struct timeval start, stop;
+			gettimeofday(&start, NULL);
 
-  } while(rest > 0);
+      size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
+      if(recv(sckt, pckt, blksize, 0) < 0) throw std::runtime_error("connection failed");
+      fwrite(pckt, sizeof(char), blksize, f);
 
-  close(sckt);
+      unsigned char ack = 0xFF;
+      if(send(sckt, &ack, sizeof(char), 0) < 0) throw std::runtime_error("connection failed");
+      rest -= blksize;
 
-  /* ----------------------------------------------------------- */
+      //Debug_Comm(std::to_string(msgsize - rest) + "/" + std::to_string(msgsize));
+
+      gettimeofday(&stop, NULL);
+			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
+      cnt++;
+      if(cnt == 200)
+      {
+        std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
+        cnt = 0;
+      }
+    } while(rest > 0);
+
+    /* ----------------------------------------------------------- */
+    close(sckt);
+    fclose(f);
+
+  // error
+  } catch(std::exception& e) {
+    std::cerr << "Client: PerformRead(): " << e.what() << "\n";
+    if(f != NULL) fclose(f);
+    close(sckt);
+  }
+
 }
 
 
 void PerformWrite(int sckt)
 {
-  /* ----------------- CLIENT WRITE PROTOCOL ------------------- */
-  // filename
-  size_t size = conf.getFile().size() + 1;
-  send(sckt, &size, sizeof(size_t), 0);
-  send(sckt, conf.getFile().c_str(), conf.getFile().size() + 1, 0);
+  FILE * f = NULL;
+  try {
+    /* ----------------- CLIENT WRITE PROTOCOL ------------------- */
+    // filename
+    size_t size = conf.getFile().size() + 1;
+    if(send(sckt, &size, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
+    if(send(sckt, conf.getFile().c_str(), conf.getFile().size() + 1, 0) < 0) throw std::runtime_error("connection failed");
 
-  // open the file
-  FILE * f = fopen(conf.getFile().c_str(), "rb");
-  if(f == NULL) throw std::runtime_error("file could not be opened");
+    // open the file
+    f = fopen(conf.getFile().c_str(), "rb");
+    if(f == NULL) throw std::runtime_error("file could not be opened");
 
-  // size of file
-  fseek(f, 0, SEEK_END);
-  size_t msgsize = ftell(f);
-  fseek(f, 0, SEEK_SET);
-  send(sckt, &msgsize, sizeof(size_t), 0);
+    // size of file
+    fseek(f, 0, SEEK_END);
+    size_t msgsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if(send(sckt, &msgsize, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
 
-  // send file
-  char pckt[BUFFER_SIZE];
-  size_t rest = msgsize;
-  do {
-    size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
-    size_t readBytes = fread(pckt, sizeof(char), blksize, f);
-    if(readBytes != blksize) { std::cerr << readBytes << ", but expected " << blksize << "!\n"; throw std::runtime_error("EOF unexpected");}
-    send(sckt, pckt, blksize, 0);
+    // send file
+    char pckt[BUFFER_SIZE];
+    size_t rest = msgsize;
+    int cnt = 0; struct timeval start, stop; // speed measure
+		do {
+      if(++cnt == 200) gettimeofday(&start, NULL);
 
-    unsigned char ack;
-    recv(sckt, &ack, sizeof(char), 0);
-    rest -= blksize;
+      size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
+      size_t readBytes = fread(pckt, sizeof(char), blksize, f);
+      if(readBytes != blksize) { std::cerr << readBytes << ", but expected " << blksize << "!\n"; throw std::runtime_error("EOF unexpected");}
+      if(send(sckt, pckt, blksize, 0) < 0) throw std::runtime_error("connection failed");
 
-  } while(rest > 0);
+      unsigned char ack;
+      if(recv(sckt, &ack, sizeof(char), 0) < 0) throw std::runtime_error("connection failed");
+      rest -= blksize;
 
-  close(sckt);
-  /* ----------------------------------------------------------- */
+      //Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
+	    if(cnt == 200)
+      {
+        gettimeofday(&stop, NULL);
+  			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
+				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
+				cnt = 0;
+			}
+
+    } while(rest > 0);
+
+    close(sckt);
+    fclose(f);
+    /* ----------------------------------------------------------- */
+
+  // error
+  } catch(std::exception& e) {
+    std::cerr << "Client: PerformWrite(): " << e.what() << "!\n";
+    if(f != NULL) fclose(f);
+    close(sckt);
+    exit(666);
+  }
+
 }
 
 

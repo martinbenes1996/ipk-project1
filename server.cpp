@@ -1,12 +1,10 @@
 
 #include <csignal>
 #include <cstring>
-#include <exception>
-#include <fstream>
 #include <iostream>
-#include <memory>
 #include <string>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <vector>
@@ -19,7 +17,7 @@ void sigChildEnded(int)
 {
 	int pid = wait(NULL);
   #ifdef CONCURRENT_DEBUG
-    std::cerr << "Subprocess " << pid << " caught.\n";
+    std::cerr << "Connection " << pid << " ended.\n";
   #endif
   (void)pid; // without CONCURRENT_DEBUG it causes warning (not used).
 }
@@ -166,64 +164,77 @@ void PerformRead(int comm)
     std::cerr << "- Performing read.\n";
   #endif
 
+	FILE *f = NULL;
+
   try {
 
     /* ----------------- SERVER READ PROTOCOL ------------------- */
 		// filename
 		size_t size;
-		recv(comm, &size, sizeof(size_t), 0);
+		if(recv(comm, &size, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
 		char * filename = new char[size];
-		recv(comm, filename, size, 0);
+		if(recv(comm, filename, size, 0) < 0) throw std::runtime_error("connection failed");
 
 		Debug_Comm(std::string("Asked filename: ") + filename);
 
 		// open the file
-		FILE * f = fopen(filename, "rb");
+		f = fopen(filename, "rb");
 		delete [] filename;
 		if(f == NULL) throw std::runtime_error("file could not be opened");
 		unsigned char stat = (f==NULL)?0x00:0xFF;
-		send(comm, &stat, sizeof(char), 0);
+		if(send(comm, &stat, sizeof(char), 0) < 0) throw std::runtime_error("connection failed");
 		if(f == NULL) throw std::runtime_error("file could not be opened");
 
 		// size of file
 		struct stat st;
 		fstat(fileno(f), &st);
 		size_t msgsize = st.st_size;
-		//fseek(f, 0, SEEK_END);
-		//size_t msgsize = (size_t)ftell(f);
-		//fseek(f, 0, SEEK_SET);
-		send(comm, &msgsize, sizeof(size_t), 0);
+		if(send(comm, &msgsize, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
 
 		Debug_Comm("File size: " + std::to_string(msgsize) + "B");
 
 		// send file
 		char pckt[BUFFER_SIZE];
 		size_t rest = msgsize;
+		int cnt = 0;
 		do {
+			struct timeval start, stop;
+			gettimeofday(&start, NULL);
+
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			size_t readBytes = fread(pckt, sizeof(char), blksize, f);
-			if(readBytes != blksize) { std::cerr << readBytes << ", but expected " << blksize << "!\n"; throw std::runtime_error("EOF unexpected");}
-			send(comm, pckt, blksize, 0);
+			if(readBytes != blksize) throw std::runtime_error("EOF unexpected");
+			if(send(comm, pckt, blksize, 0) < 0) throw std::runtime_error("connection failed");
 
 			unsigned char ack;
-			recv(comm, &ack, sizeof(char), 0);
+			if(recv(comm, &ack, sizeof(char), 0) < 0) throw std::runtime_error("connection failed");
 			rest -= blksize;
 
-			Debug_Comm("Sent " + std::to_string(msgsize - rest) + "/" + std::to_string(msgsize) + "B");
+			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
 
+			gettimeofday(&stop, NULL);
+			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
+			cnt++;
+      if(cnt == 200)
+      {
+				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
+				cnt = 0;
+			}
 		} while(rest > 0);
 
     /* ----------------------------------------------------------- */
 
     #ifdef CONCURRENT_DEBUG
-      std::cerr << "- Write success.\n";
+      std::cerr << "- Read success.\n";
     #endif
     close(comm);
 		fclose(f);
     exit(0);
 
+	// error
   } catch(std::exception& e) {
-    std::cerr << "- Write fail: " << e.what() << "!\n";
+    std::cerr << "Server: PerformRead(): " << e.what() << "!\n";
+		if(f != NULL) fclose(f);
     close(comm);
     exit(1);
   }
@@ -236,6 +247,7 @@ void PerformWrite(int comm)
     std::cerr << "- Performing write.\n";
   #endif
 
+	FILE * f = NULL;
   try {
 
     /* ----------------- SERVER WRITE PROTOCOL ------------------- */
@@ -246,7 +258,7 @@ void PerformWrite(int comm)
 		recv(comm, filename, size, 0);
 
 		// open the file
-		FILE * f = fopen(filename, "wb");
+		f = fopen(filename, "wb");
 		delete [] filename;
 		if(f == NULL) throw std::runtime_error("file could not be opened");
 
@@ -255,8 +267,11 @@ void PerformWrite(int comm)
 		recv(comm, &msgsize, sizeof(size_t), 0);
 
 		char pckt[BUFFER_SIZE];
-		ssize_t rest = msgsize;
+		size_t rest = msgsize;
+		int cnt = 0; struct timeval start, stop; // speed measure
 		do {
+			if(++cnt == 200) gettimeofday(&start, NULL);
+
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			recv(comm, pckt, blksize, 0);
 			fwrite(pckt, sizeof(char), blksize, f);
@@ -264,20 +279,29 @@ void PerformWrite(int comm)
 			unsigned char ack = 0xFF;
 			send(comm, &ack, sizeof(char), 0);
 			rest -= blksize;
+
+			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
+	    if(cnt == 200)
+      {
+        gettimeofday(&stop, NULL);
+  			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
+				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
+				cnt = 0;
+			}
+
 		} while(rest > 0);
 
     /* ----------------------------------------------------------- */
 
-    #ifdef CONCURRENT_DEBUG
-      std::cerr << "- Write success.\n";
-    #endif
     close(comm);
 		fclose(f);
     exit(0);
 
+	// error
   } catch(std::exception& e) {
-    std::cerr << "- Write fail: " << e.what() << "!\n";
+    std::cerr << "Server: PerformWrite(): " << e.what() << "!\n";
     close(comm);
+		if(f != NULL) fclose(f);
     exit(1);
   }
 }
