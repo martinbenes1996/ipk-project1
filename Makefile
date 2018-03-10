@@ -11,7 +11,7 @@
 cc = g++
 defines = -DDEBUG_MODE
 linkings = -lpthread -lm
-flags = $(defines) -std=c++17 -O2 -g -pedantic -Wall -Wextra
+flags = $(defines) -std=c++14 -O2 -g -pedantic -Wall -Wextra
 
 all: ipk-client ipk-server
 

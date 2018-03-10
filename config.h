@@ -32,15 +32,8 @@ class Config
     int getPort() { return mport; }
     bool read() { return mread; }
     bool write() { return !mread; }
-    NetString getFile() { return NetString(mfile); }
-    NetString getFilename() { return NetString(mfile.substr(mfile.find_last_of("/\\") + 1)); }
-
-    NetString ReadFile()
-    {
-      NetString mfiledata;
-      mfiledata.ReadFile(mfile);
-      return mfiledata;
-    }
+    std::string getFile() { return mfile; }
+    std::string getFilename() { return mfile.substr(mfile.find_last_of("/\\") + 1); }
 
     void checkClient()
     {
