@@ -18,6 +18,28 @@
 \usepackage{ragged2e}   % fullfill paragraphs
 \usepackage{multicol}
 \usepackage{lscape}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{courier}
+
+\definecolor{mGreen}{rgb}{0,0.6,0}
+\definecolor{mGray}{rgb}{0.5,0.5,0.5}
+\definecolor{mPurple}{rgb}{0.58,0,0.82}
+\definecolor{backgroundColour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{CStyle}{
+    commentstyle=\color{mGreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{mGray},
+    stringstyle=\color{mPurple},
+    basicstyle=\scriptsize\ttfamily,%\tiny\ttfamily,
+    breakatwhitespace=false,
+    columns=fullflexible,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    language=C
+}
 
 \newenvironment{changemargin}[2]{%
 \begin{list}{}{%
@@ -29,6 +51,10 @@
 \setlength{\parsep}{\parskip}%
 }%
 \item[]}{\end{list}}
+
+%\usepackage{biblatex}
+\usepackage[backend=biber]{biblatex}
+\addbibresource{dokumentace.bib}
 
 \begin{document}
 %-----------------------------------------%
@@ -55,33 +81,39 @@
 %	              DOCUMENT                  %
 %-----------------------------------------%
 
-\setcounter{page}{1}
-\pagenumbering{arabic}
+\pagenumbering{gobble}
 
-\section{IPK project documentation}
+\section*{IPK project documentation}
 The task was to create an client-server application in C/C++, that communicates
 using BSD sockets and transfers files.
 
 We ought to design our own protocol, that we use for the communication, and
 describe it in documentation in detail.
 
-\subsection{Protocol description}
-I started with an analysis of BSD socket interface. Since it has semantics
-as C, saving socket into buffer without being possible to reallocate the buffer,
-I tried to deal with that in my design, so I would be able to save the data
-using single function call into rightly sized buffer.
+\subsection*{Protocol description}
+I started with an analysis of BSD socket interface. Since it is C library,
+the classical C-style approach appeared to me more suitable in this case,
+considering the project size. The~protocol is built on TCP protocol,
+because it needs reliable transmission.
 
-The protocol is built on TCP protocol, since it needs reliable transmission.
-
+{\it TCP creates a {\bf reliable data transfer service} on top of IP's unreliable
+best-effort service. TCP's reliable data transfer service ensures that the
+data stream that process reads out of its TCP receive buffer is uncorrupted,
+without gaps, without duplication, and in sequence; that is, the byte stream
+is exactly the same byte stream that was sent by the end system on the other
+side of the connection.} \cite[p.~238]{computernetworking}.
 
 \begin{multicols}{2}
-The protocol is described and implemented on two levels of abstraction,
-the lower one enables sending and receiving byte, or string. Sending a
-variably-sized data (strings) is preceded with sending a fixed-sized
-({\it size\_t}) size of the data. That enables receiver to allocate a
-buffer of the right size, so the data fits in.
+The protocol was described on two levels of abstraction, simplifying its
+relative complexity. The lower one specifies the sending of single
+buffer. Due to the BSD sockets specification, where the receiver
+does not know the size of data he acquires, the protocol sends a packet
+(of {\it sizeof(size\_t)}) with the~size of data that will follow,
+and the data itself afterwards.
 
-\includegraphics[width=0.37\textwidth]{send_data.png}
+So when the receiver reads the data, he already knows their size.
+
+\includegraphics[width=0.45\textwidth]{send_data.png}
 \end{multicols}
 
 
@@ -89,85 +121,119 @@ buffer of the right size, so the data fits in.
 \includegraphics[width=0.4\textwidth]{send_byte.png}
 
 The protocol may send a single byte too. It is used to send an indication
-to the opposite side, such as errors etc. For example, the client sends
-the mode (read/write), or server announces if the reading of file succeeded.
+to the opposite side, such as errors etc., the~client sends the mode
+(read/write), or server announces if the reading of file succeeds.
 
-In this case, the sent data is fixed-sized ({\it unsigned~char}),
+In this case, the sent data are fixed-sized ({\it unsigned~char}),
 so it does not have to do the same routine as the above mentioned.
 \end{multicols}
 
-The higher abstraction layer (the program itself) uses the services
-of the lower. For simplification of the images, the sending of the size
-of data will not be displayed.
 
-The server is listening on the port and the client is connecting
-to the server with explicitly given address and port. The mode
-of usage (read/write) is also given.
+The higher abstraction layer (the program itself) uses the services of the
+lower. The~server is listening on the port and the client is connecting to the
+server with explicitly given address and port. The mode of usage (read/write)
+is also given.
 
+During the implementation, I have encountered several problems. The most
+significant one pushed me to the the segmentation of the message on my own.
+When the data are to be sent, they are read as segments ({\it by 1024~B})
+and sent like that, preceeded by total size, as was mentioned above.
+The opposite side receives them and it substracts the total data received.
+When the last buffer receives, the receiver knows exactly, how big is the
+part that contains valid data.
+
+This makes the problem a bit more complicated, but it prevents the problem
+with too big files, that would not fit into RAM.
+
+Every segment sent is followed with ACK packet, that confirms its arrival.
+It slows the process a lot, but it is worth it, anyway the lost packets would
+get lost.
 
 \begin{multicols}{2}
-The read is initiated, when argument {\it -r} is given, following with
-a {\it path}. The first to send as a client is a byte 0xFF, that means
-the reading mode is selected.
+The read is initiated, when argument {\it -r} is given, following with a
+{\it path}. The first to send as a client is a byte 0xFF, that means the reading
+mode is selected.
 
-The second thing to send is the {\it full path of file}. Afterwards, the {\it file}
-itself is expected to receive from the server in the form of string.
+The second thing to send is a single {\it filename}. Afterwards, the {\it file}
+itself is expected to receive from the server.
 
-The semantics of sending a string are used here, as same as during the sending
-of a file path.
+Then the data are sent, the described procedures are used here.
 
-When the file data arrives, they are written into the file of the same name,
-as the received one.
+The client then writes the arriving data into the file of the name, here into
+the full path, that was given.
 
 \includegraphics[width=0.5\textwidth]{read.png}
 \end{multicols}
 
 
 \begin{multicols}{2}
-\includegraphics[width=0.5\textwidth]{write.png}
 
 The write is similar as read with slight differences, it is initialized
 with a given argument {\it -w} and the {\it path} afterwards. The first byte
-is 0x00, indicating the write mode.
+is 0x0F, indicating the write mode.
 
 Then the client sends {\it the name of the file} (without the path), on the
 server, it will be located in the working directory.
 
 The client follows with sending {\it the file data}. Again, it is done
-with the mentioned method of sending variably-sized strings.
+with the mentioned method.
 
 The server then writes the received data to the file.
 
+\includegraphics[width=0.5\textwidth]{write.png}
 \end{multicols}
 
-\subsection{Implementation}
+\subsection*{Client state diagram}
 
-The lower level of protocol is implemented as class hierarchy, so it is
-encapsulated and may be instatiated. There is an abstract class {\it Socket},
-which contains common code for both client and server, and inherited
-{\it ClientSocket} and {\it ServerSocket}, that implements the distinct parts.
-They also covers the BDS socket interface calling, so basically only these
-classes is directly dependent on BSD socket interface.
+\includegraphics[width=0.9\textwidth]{state_client.png}
+
+\subsection*{Server state diagram}
+
+\includegraphics[width=0.9\textwidth]{state_server.png}
+
+\subsection*{Implementation}
 
 There are two programs, {\it ipk-server} and {\it ipk-client}, each has its
 own module, {\it server.cpp} and {\it client.cpp}. They contain implementation
-of higher-abstraction level of my protocol, as described above.
+of the whole protocol, as described above.
 
 The server is concurrent, using {\it fork()} call and utilities from
 {\it signal.h} standard C library, which means it can operate with multiple
 clients at one time.
 
-There are also some common moduls used by both of the programs: {\it config.h},
-{\it defs.h} and {\it mysocket.h}. The module {\it config.h} defines
-{\it Config} class, which is used to process arguments, to check if they are
-valid for the program it is used in and to hold the configuration of the program.
-The module {\it defs.h} includes debug constants and common functions.
-
-The module {\it mysocket.h} contains the {\it Socket} class definition, as well
-as the inherited classes, {\it ClientSocket} and {\it ServerSocket}. It
-provides an interface, that is then well legible at the {\it client.cpp}
-and {\it server.cpp} modules, where it is used.
+There is also a common module used by both of the programs, {\it defs.h}.
+It includes debug constants, common functions and a {\it Config} class,
+which is used to process arguments, to check if they are valid for the program
+it is used in and to hold the configuration of the program.
 
 
+
+\begin{multicols}{2}
+
+\begin{lstlisting}[style=CStyle]
+  /* ----- client.cpp ----- */
+  // send mode (read/write)
+  unsigned char mode = conf.read()?0xFF:0x0F;
+  send(sckt, &mode, sizeof(char), 0);
+  if(conf.read())
+    PerformRead(sckt);  // read
+  else
+    PerformWrite(sckt); // write
+\end{lstlisting}
+
+\begin{lstlisting}[style=CStyle]
+  /* ----- server.cpp ----- */
+  // receive mode (read/write)
+  unsigned char mode;
+  recv(comm, &mode, sizeof(mode), 0);
+  if( mode == 0xFF )
+    PerformRead(comm);  // read
+  else
+    PerformWrite(comm); // write
+  // no return here
+\end{lstlisting}
+
+\end{multicols}
+\printbibliography
 
 \end{document}

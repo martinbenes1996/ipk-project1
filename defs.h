@@ -19,8 +19,12 @@
 #endif // DEBUG_MODE
 
 #define BUFFER_SIZE 1024
-#define WINDOW_SIZE 8
+#define WINDOW_SIZE 8 // firstly i wanted to do it using windows
 
+/**
+ * @brief     Prints given message, if COMM_DEBUG is enabled
+ * @param str         String to print.
+ */
 void Debug_Comm(std::string str)
 {
   (void)str;
@@ -29,6 +33,10 @@ void Debug_Comm(std::string str)
   #endif
 }
 
+/**
+ * @brief     Prints given message, if CONCURRENT_DEBUG is enabled
+ * @param str         String to print.
+ */
 void Debug_Concurr(std::string str)
 {
   (void)str;
@@ -37,6 +45,11 @@ void Debug_Concurr(std::string str)
   #endif
 }
 
+/**
+ * @brief Creates a socket (used in client as well as server).
+ * @param mode          Mode in which the socket is opened (IPv4, IPv6).
+ * @returns Descriptor of socket.
+ */
 int createSocket(int mode)
 {
   int msocket;
@@ -47,68 +60,122 @@ int createSocket(int mode)
   return msocket;
 }
 
-class Buffer
+
+
+/**
+ * @brief Config class. Represents given arguments.
+ */
+class Config
 {
   public:
-    Buffer()
+    /* ----------------- Constructor ------------------ */
+    /** @brief Constructor. */
+    Config() {}
+    /* ------------------- Setters -------------------- */
+    // HOST SETTERS
+    /**
+     * @brief Adress setter.
+     * @param addr        New address.
+     */
+    void setAddress(const char * addr) { maddr = std::string(addr); }
+    /**
+     * @brief Port setter.
+     * @param port        New port.
+     */
+    void setPort(const char * port)
     {
-      #ifdef BUFFER_DEBUG
-        std::cerr << "Create buffer.\n";
+      try { mport = std::stoi(port); }
+      catch(std::exception& e) { throw std::runtime_error("Not valid port number."); }
+    }
+    // MODE SETTERS
+    /**
+     * @brief Write file setter.
+     * @param file        File, that will be sent to server.
+     */
+    void setWrite(const char * file) { mread = false; mfile = std::string(file); }
+    /**
+     * @brief Read file setter.
+     * @param file        File, that will be received from server.
+     */
+    void setRead(const char * file) { mread = true; mfile = std::string(file); }
+
+    /* -------------------- Getters -------------------- */
+    /**
+     * @brief Adress getter.
+     * @returns Address.
+     */
+    std::string getAddress() { return maddr; }
+    /**
+     * @brief Port getter.
+     * @returns Port.
+     */
+    int getPort() { return mport; }
+    /**
+     * @brief Read indicator getter.
+     * @returns True, if -r was given.
+     */
+    bool read() { return mread; }
+    /**
+     * @brief Write indicator getter.
+     * @returns True, if -w was given.
+     */
+    bool write() { return !mread; }
+    /**
+     * @brief File getter.
+     * @returns Name of the file, as it was given.
+     */
+    std::string getFile() { return mfile; }
+    /**
+     * @brief Filename getter.
+     * @returns Name of the file, without a path.
+     */
+    std::string getFilename() { return mfile.substr(mfile.find_last_of("/\\") + 1); }
+
+    /* -------------------- Checkers -------------------- */
+    /**
+     * @brief Client checker. Throws runtime_error,
+     *        if any client parameter is missing.
+     */
+    void checkClient()
+    {
+      if(maddr == "") throw std::runtime_error("Argument -h not given.");
+      if(mport == -1) throw std::runtime_error("Argument -p not given.");
+      if(mfile == "") throw std::runtime_error("Any of arguments [-w|-r] not given.");
+    }
+    /**
+     * @brief Server checker. Throws runtime_error,
+     *        if any server parameter is missing.
+     */
+    void checkServer()
+    {
+      if(mport == -1) throw std::runtime_error("Argument -p not given.");
+    }
+
+    /* -------------------- Debug -------------------- */
+    /**
+     * @brief Prints contents of Config, if CONFIG_DEBUG is enabled.
+     */
+    void printConfig()
+    {
+      #ifdef CONFIG_DEBUG
+        std::cout << "|address:\t" << maddr << "\n" <<
+                     "|port:\t" << mport << "\n" <<
+                     "|mode:\t" << mfile << (mread)?" R":" W" << "\n";
       #endif
     }
-
-    void insert(size_t index, const char * buff, size_t size = BUFFER_SIZE)
-    {
-      if(size > BUFFER_SIZE) throw std::runtime_error("too big buffer");
-      if(index >= WINDOW_SIZE) throw std::runtime_error("index out of range");
-      if( getTaken(index) ) throw std::runtime_error("buffer already taken");
-
-      #ifdef BUFFER_DEBUG
-        std::cout << "Buffer: inserting " << size << "B string into " << index*BUFFER_SIZE + 1 << ".\n";
-      #endif
-
-      strncpy(&mbuff[index*BUFFER_SIZE + 1], buff, size);
-      setTaken(index);
-      msize[index] = (char)index;
-    }
-
-    char * get(size_t index = 0)
-    {
-      if(!validData()) throw std::runtime_error("invalid data");
-      if(index >= WINDOW_SIZE) throw std::runtime_error("index out of range");
-      if(!getTaken(index)) throw std::runtime_error("empty index");
-      return &mbuff[index*BUFFER_SIZE];
-    }
-
-    char * handle(size_t index = 0)
-    {
-      return &get(index)[1];
-    }
-
-    size_t getSize()
-    {
-      size_t size = 0;
-      for(int i = 0; i < WINDOW_SIZE; i++)
-        size += msize[i];
-      return size;
-    }
+    /* ----------------------------------------------- */
 
   private:
-    char mbuff[WINDOW_SIZE * (BUFFER_SIZE + 1)];
-    size_t msize[WINDOW_SIZE] = {};
-    unsigned char mmask = 0x00;
 
-    bool getTaken(size_t index) { return mmask & (0x01 << index); }
-    void setTaken(size_t index)
-    {
-      std::cout << +mmask << " | " << +(0x01 << index) << " -> ";
-      mmask = mmask | (0x01 << index);
-      std::cout << +mmask << "\n";
-    }
-    bool validData()
-    {
-      return ((mmask == 0x01) || (mmask == 0x03) || (mmask == 0x07) || (mmask == 0x0F) || (mmask == 0x1F) || (mmask == 0x3F) || (mmask == 0x7F) || (mmask == 0xFF));
-    }
+    /* ----------------- DATA ------------------- */
+    // host
+    std::string maddr = "";   /*< Host address. */
+    int mport = -1; /*< Host port. */
+    // mode
+    bool mread = true; /* Whether read (true), or write (false). */
+    std::string mfile = ""; /* File to write/read. */
+    /* ------------------------------------------ */
+
 };
 
 #endif // DEFS_H

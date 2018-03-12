@@ -9,9 +9,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "defs.h"
 
+/* ----------------- Signal handlers. ------------------ */
+/**
+ * @brief SIGCHLD handler.
+ */
 void sigChildEnded(int)
 {
 	int pid = wait(NULL);
@@ -20,12 +23,35 @@ void sigChildEnded(int)
   #endif
   (void)pid; // without CONCURRENT_DEBUG it causes warning (not used).
 }
-
+/**
+ * @brief SIGINT handler.
+ */
 void sigInt(int)
 {
+	std::cout << "\rServer quits.\n";
   exit(0);
 }
 
+/* ----------------- Functions. ------------------ */
+/**
+ * @brief Processes arguments. Generates Config from them.
+ */
+Config ProcessArguments(int argc, char *argv[]);
+/**
+ * @brief Performs read from the server. Noreturn function.
+ * @param sckt 			Communication socket.
+ */
+void PerformRead(int sckt);
+/**
+ * @brief Performs write to the server. Noreturn function.
+ * @param sckt 			Communication socket.
+ */
+void PerformWrite(int sckt);
+/**
+ * @brief Creates struct sockaddr_in6 from port.
+ * @param port 			Port to connect to.
+ * @returns Filled struct.
+ */
 struct sockaddr_in6 getAddr(int port)
 {
 	struct sockaddr_in6 addr;
@@ -36,23 +62,7 @@ struct sockaddr_in6 getAddr(int port)
 	return addr;
 }
 
-/**
- * @brief Processes arguments. Generates Config from them.
- */
-Config ProcessArguments(int argc, char *argv[]);
-
-/**
- * @brief Performs read from the server. Noreturn function.
- * @param sckt 			Communication socket.
- */
-void PerformRead(int sckt);
-
-/**
- * @brief Performs write to the server. Noreturn function.
- * @param sckt 			Communication socket.
- */
-void PerformWrite(int sckt);
-
+/* ---------------------- Main. ---------------------- */
 /**
  * @brief Main function.
  */
@@ -62,7 +72,6 @@ int main(int argc, char *argv[])
   Config conf;
   try { conf = ProcessArguments(argc, argv); }
   catch(std::exception& e) { std::cerr << e.what() << "\n"; exit(1); }
-
 
   // create socket
 	int welcome;
@@ -76,7 +85,6 @@ int main(int argc, char *argv[])
 		std::cerr << e.what() << "!\n";
 		exit(1);
 	}
-
 
 	// reset signal handlers
   signal(SIGCHLD,sigChildEnded);
@@ -141,22 +149,6 @@ int main(int argc, char *argv[])
   } return 0; // dead code (ends with Ctrl+C)
 }
 
-
-Config ProcessArguments(int argc, char *argv[])
-{
-  // bad arguments count
-  if(argc != 3) throw std::runtime_error("Bad count of arguments.");
-
-  Config c; // create config
-  // -p
-  if( !strcmp(argv[1],"-p") ) c.setPort(argv[2]);
-  // error
-  else throw std::runtime_error("Invalid parameters");
-
-  c.checkServer();
-  return c;
-}
-
 void PerformRead(int comm)
 {
 	#ifdef CONCURRENT_DEBUG
@@ -198,7 +190,7 @@ void PerformRead(int comm)
 		int cnt = 0;
 		do {
 			struct timeval start, stop;
-			gettimeofday(&start, NULL);
+			if(++cnt == 50) gettimeofday(&start, NULL);
 
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			size_t readBytes = fread(pckt, sizeof(char), blksize, f);
@@ -211,11 +203,10 @@ void PerformRead(int comm)
 
 			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
 
-			gettimeofday(&stop, NULL);
-			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
-			cnt++;
-      if(cnt == 200)
+      if(cnt == 50)
       {
+				gettimeofday(&stop, NULL);
+				double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
 				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
 				cnt = 0;
 			}
@@ -269,7 +260,7 @@ void PerformWrite(int comm)
 		size_t rest = msgsize;
 		int cnt = 0; struct timeval start, stop; // speed measure
 		do {
-			if(++cnt == 200) gettimeofday(&start, NULL);
+			if(++cnt == 50) gettimeofday(&start, NULL);
 
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			recv(comm, pckt, blksize, 0);
@@ -280,7 +271,7 @@ void PerformWrite(int comm)
 			rest -= blksize;
 
 			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
-	    if(cnt == 200)
+	    if(cnt == 50)
       {
         gettimeofday(&stop, NULL);
   			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
@@ -303,4 +294,19 @@ void PerformWrite(int comm)
 		if(f != NULL) fclose(f);
     exit(1);
   }
+}
+
+Config ProcessArguments(int argc, char *argv[])
+{
+  // bad arguments count
+  if(argc != 3) throw std::runtime_error("Bad count of arguments.");
+
+  Config c; // create config
+  // -p
+  if( !strcmp(argv[1],"-p") ) c.setPort(argv[2]);
+  // error
+  else throw std::runtime_error("Invalid parameters");
+
+  c.checkServer();
+  return c;
 }

@@ -1,0 +1,24 @@
+
+This project is basic client-server application. It is able to send files
+using designed protocol. It compiles with make call (or gmake).
+
+It is used:
+1) First run server at known IP address.
+  $ ./ipk-server -p <server-port>
+2) Then run client.
+  $ ./ipk-client -h <server-address> -p <server-port> [-r|-w] <filename>
+
+Use -r <filename> to read the file from the working directory of server and
+it will be saved into <filename> (doc/dokumentace.pdf will save file
+dokumentace.pdf in server working directory to client's doc/dokumentace.pdf, if
+the directory doc/ exists).
+
+Use -w <filename> to write the file to the working directory of the server from
+<filename> (doc/dokumentace.pdf will save dokumentace.pdf in server working
+directory from the client's doc/dokumentace.pdf, if exists).
+
+
+
+Limitations:
+The application was not tested for packet loss.
+The application was not tested for concurrent access to one file.

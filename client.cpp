@@ -7,30 +7,29 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "config.h"
 #include "defs.h"
 
+/* - DATA - */
 Config conf;
+/* -------- */
 
+/* ----------------- Functions. ------------------ */
 /**
  * @brief Processes arguments. Generates Config from them.
  */
 Config ProcessArguments(int argc, char *argv[]);
-
-std::string ReadFile(std::string name);
-
 /**
  * @brief Performs read from the server.
  * @param sckt    Socket.
  */
 void PerformRead(int);
-
 /**
  * @brief Performs write to the server.
  * @param sckt    Socket
  */
 void PerformWrite(int);
 
+/* ---------------------- Main. ---------------------- */
 /**
  * @brief Main function.
  */
@@ -74,7 +73,6 @@ int main(int argc, char *argv[])
 void PerformRead(int sckt)
 {
   FILE * f = NULL;
-
   try {
     /* ----------------- CLIENT READ PROTOCOL ------------------- */
 

@@ -28,16 +28,20 @@ ipk-server: server.cpp
 .PHONY: doc
 doc:
 	@echo "Create documentation.";\
-	cd doc && pdflatex dokumentace.tex && cd ..
+	$(MAKE) -C doc/
 
 # clean
 .PHONY: clean
 clean:
 	@echo "Cleaning generated files.";\
-	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server doc/dokumentace.aux doc/dokumentace.log doc/dokumentace.pdf ipk.tar.gz
+	rm -rf *~ *.o *.gch *.dep ipk-client ipk-server doc/dokumentace.aux doc/dokumentace.log doc/dokumentace.pdf xbenes49.zip
 
 # zip
 .PHONY: zip
 zip:
 	@echo "Zipping files.";\
-	tar -zcvf ipk.tar.gz *.cpp *.h Makefile doc/dokumentace.tex doc/*.png> /dev/null 2> /dev/null
+	cp doc/dokumentace.pdf .
+	@printf "";\
+	zip xbenes49.zip *.cpp *.h Makefile dokumentace.pdf > /dev/null 2> /dev/null
+	@printf "";\
+	rm dokumentace.pdf
