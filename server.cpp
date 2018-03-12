@@ -125,7 +125,8 @@ int main(int argc, char *argv[])
 				unsigned char mode;
 				recv(comm, &mode, sizeof(mode), 0);
 	      if( mode == 0xFF ) PerformRead(comm); // read
-	      else PerformWrite(comm);              // write
+	      else if( mode == 0xFF) PerformWrite(comm);// write
+				else { std::cerr << "Invalid mode!\n"; close(comm); exit(1); }
 				// no return here
 			}
 			// --------------------------------------------------
