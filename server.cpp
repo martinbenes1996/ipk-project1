@@ -21,6 +21,7 @@ void sigChildEnded(int)
   #ifdef CONCURRENT_DEBUG
     std::cerr << "Connection " << pid << " ended.\n";
   #endif
+	std::cerr << "\n";
   (void)pid; // without CONCURRENT_DEBUG it causes warning (not used).
 }
 /**
@@ -125,7 +126,7 @@ int main(int argc, char *argv[])
 				unsigned char mode;
 				recv(comm, &mode, sizeof(mode), 0);
 	      if( mode == 0xFF ) PerformRead(comm); // read
-	      else if( mode == 0xFF) PerformWrite(comm);// write
+	      else if( mode == 0x0F) PerformWrite(comm);// write
 				else { std::cerr << "Invalid mode!\n"; close(comm); exit(1); }
 				// no return here
 			}
@@ -188,10 +189,10 @@ void PerformRead(int comm)
 		// send file
 		char pckt[BUFFER_SIZE];
 		size_t rest = msgsize;
-		int cnt = 0;
+		//int cnt = 0;
 		do {
 			struct timeval start, stop;
-			if(++cnt == 50) gettimeofday(&start, NULL);
+			/*if(++cnt == 50)*/ gettimeofday(&start, NULL);
 
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			size_t readBytes = fread(pckt, sizeof(char), blksize, f);
@@ -204,13 +205,13 @@ void PerformRead(int comm)
 
 			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
 
-      if(cnt == 50)
-      {
+      //if(cnt == 50)
+      //{
 				gettimeofday(&stop, NULL);
 				double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
-				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
-				cnt = 0;
-			}
+				std::cout << "\r" << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s  ";
+				//cnt = 0;
+			//}
 		} while(rest > 0);
 
     /* ----------------------------------------------------------- */
@@ -259,9 +260,9 @@ void PerformWrite(int comm)
 
 		char pckt[BUFFER_SIZE];
 		size_t rest = msgsize;
-		int cnt = 0; struct timeval start, stop; // speed measure
+		/*int cnt = 0; */struct timeval start, stop; // speed measure
 		do {
-			if(++cnt == 50) gettimeofday(&start, NULL);
+			/*if(++cnt == 50)*/ gettimeofday(&start, NULL);
 
 			size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
 			recv(comm, pckt, blksize, 0);
@@ -272,13 +273,13 @@ void PerformWrite(int comm)
 			rest -= blksize;
 
 			//Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
-	    if(cnt == 50)
-      {
+	    //if(cnt == 50)
+      //{
         gettimeofday(&stop, NULL);
   			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
-				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
-				cnt = 0;
-			}
+				std::cout << "\r" << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s  ";
+				//cnt = 0;
+			//}
 
 		} while(rest > 0);
 

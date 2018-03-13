@@ -83,7 +83,7 @@
 
 \pagenumbering{gobble}
 
-\section*{IPK project documentation}
+
 The task was to create an client-server application in C/C++, that communicates
 using BSD sockets and transfers files.
 
@@ -91,6 +91,8 @@ We ought to design our own protocol, that we use for the communication, and
 describe it in documentation in detail.
 
 \subsection*{Protocol description}
+
+%\begin{multicols}{2}
 I started with an analysis of BSD socket interface. Since it is C library,
 the classical C-style approach appeared to me more suitable in this case,
 considering the project size. The~protocol is built on TCP protocol,
@@ -102,6 +104,9 @@ data stream that process reads out of its TCP receive buffer is uncorrupted,
 without gaps, without duplication, and in sequence; that is, the byte stream
 is exactly the same byte stream that was sent by the end system on the other
 side of the connection.} \cite[p.~238]{computernetworking}.
+
+%\includegraphics[width=0.35\textwidth]{BSDsockets.png}
+%\end{multicols}
 
 \begin{multicols}{2}
 The protocol was described on two levels of abstraction, simplifying its

@@ -61,6 +61,8 @@ int main(int argc, char *argv[])
     if(conf.read()) PerformRead(sckt); // read
     else PerformWrite(sckt);           // write
 
+    std::cerr << "\n";
+
   } catch(std::exception& ex) {
     std::cerr << "Client: main(): " << ex.what() << "!\n";
     exit(444);
@@ -102,7 +104,7 @@ void PerformRead(int sckt)
     // receive file
     char pckt[BUFFER_SIZE];
     size_t rest = msgsize;
-    int cnt = 0;
+    //int cnt = 0;
     do {
       struct timeval start, stop;
 			gettimeofday(&start, NULL);
@@ -119,12 +121,12 @@ void PerformRead(int sckt)
 
       gettimeofday(&stop, NULL);
 			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
-      cnt++;
-      if(cnt == 200)
-      {
-        std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
-        cnt = 0;
-      }
+      //cnt++;
+      //if(cnt == 200)
+      //{
+        std::cout << "\r" << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s  ";
+        //cnt = 0;
+      //}
     } while(rest > 0);
 
     /* ----------------------------------------------------------- */
@@ -146,14 +148,14 @@ void PerformWrite(int sckt)
   FILE * f = NULL;
   try {
     /* ----------------- CLIENT WRITE PROTOCOL ------------------- */
+    // open the file
+    f = fopen(conf.getFile().c_str(), "rb");
+    if(f == NULL) throw std::runtime_error("file could not be opened");
+
     // filename
     size_t size = conf.getFilename().size() + 1;
     if(send(sckt, &size, sizeof(size_t), 0) < 0) throw std::runtime_error("connection failed");
     if(send(sckt, conf.getFilename().c_str(), conf.getFile().size() + 1, 0) < 0) throw std::runtime_error("connection failed");
-
-    // open the file
-    f = fopen(conf.getFile().c_str(), "rb");
-    if(f == NULL) throw std::runtime_error("file could not be opened");
 
     // size of file
     fseek(f, 0, SEEK_END);
@@ -164,9 +166,10 @@ void PerformWrite(int sckt)
     // send file
     char pckt[BUFFER_SIZE];
     size_t rest = msgsize;
-    int cnt = 0; struct timeval start, stop; // speed measure
+    //int cnt = 0;
+    struct timeval start, stop; // speed measure
 		do {
-      if(++cnt == 200) gettimeofday(&start, NULL);
+      /*if(++cnt == 200)*/ gettimeofday(&start, NULL);
 
       size_t blksize = (rest > BUFFER_SIZE) ? BUFFER_SIZE : rest;
       size_t readBytes = fread(pckt, sizeof(char), blksize, f);
@@ -178,13 +181,13 @@ void PerformWrite(int sckt)
       rest -= blksize;
 
       //Debug_Comm("Sent " + std::to_string(msgsize - rest) + " / " + std::to_string(msgsize) + " B [" + std::to_string(int((msgsize - rest) / (double)msgsize)) + "%]");
-	    if(cnt == 200)
-      {
+	    //if(cnt == 200)
+      //{
         gettimeofday(&stop, NULL);
   			double speed = blksize / (((double)(stop.tv_usec - start.tv_usec)/1000000) + (double)(stop.tv_sec - start.tv_sec));
-				std::cout << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s\n";
-				cnt = 0;
-			}
+				std::cout << "\r" << int(((msgsize - rest) / (double)msgsize)*100) << "%\t" << int(speed/1000.) << " kB/s  ";
+				//cnt = 0;
+			//}
 
     } while(rest > 0);
 
